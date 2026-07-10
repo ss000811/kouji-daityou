@@ -636,6 +636,122 @@
     /* ---- UX: 一覧行ハイライト ---- */
     tbody tr:hover .status-quick { filter: brightness(0.94); }
 
+    /* ---- ヘッダー右側（ユーザー情報・ログアウト） ---- */
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .header-user {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .header-user-email {
+      font-size: 0.83rem;
+      opacity: 0.85;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .btn-logout {
+      padding: 6px 16px;
+      border-radius: 8px;
+      border: 1.5px solid rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.12);
+      color: white;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.18s;
+      white-space: nowrap;
+    }
+    .btn-logout:hover { background: rgba(255,255,255,0.25); }
+
+    /* ---- ログインオーバーレイ ---- */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: #f0f4f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .login-box {
+      background: white;
+      border-radius: 16px;
+      padding: 44px 40px 36px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 8px 40px rgba(26,54,93,0.15);
+    }
+    .login-logo {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #1a365d;
+      margin-bottom: 4px;
+      letter-spacing: 0.01em;
+    }
+    .login-sub {
+      font-size: 0.83rem;
+      color: #718096;
+      margin-bottom: 32px;
+    }
+    .login-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #4a5568;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .login-input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #cbd5e0;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      color: #2d3748;
+      background: #fafafa;
+      margin-bottom: 16px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .login-input:focus {
+      outline: none;
+      border-color: #4299e1;
+      box-shadow: 0 0 0 3px rgba(66,153,225,0.15);
+      background: white;
+    }
+    .login-btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #2b6cb0 0%, #1a56a7 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 4px;
+    }
+    .login-btn:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(43,108,176,0.4); }
+    .login-btn:disabled { opacity: 0.6; cursor: wait; transform: none; }
+    .login-error {
+      background: #fff5f5;
+      border: 1px solid #feb2b2;
+      color: #c53030;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.84rem;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .login-error.show { display: block; }
+
     @media (max-width: 640px) {
       header { padding: 16px 20px; }
       .container { padding: 16px; }
@@ -649,10 +765,19 @@
 <body>
 
 <header>
-  <h1>工事台帳・物件管理システム</h1>
-  <p>物件の契約・工事・収支情報を管理します</p>
+  <div class="header-inner">
+    <div>
+      <h1>工事台帳・物件管理システム</h1>
+      <p>物件の契約・工事・収支情報を管理します</p>
+    </div>
+    <div class="header-user" id="headerUser" style="display:none">
+      <span class="header-user-email" id="headerUserEmail"></span>
+      <button class="btn-logout" onclick="logout()">ログアウト</button>
+    </div>
+  </div>
 </header>
 
+<div id="appContent" style="display:none">
 <div class="container">
 
   <!-- 入力フォーム -->
@@ -852,6 +977,21 @@
   </div>
 
 </div><!-- /container -->
+</div><!-- /appContent -->
+
+<!-- ログインオーバーレイ -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <div class="login-logo">工事台帳・物件管理システム</div>
+    <div class="login-sub">アカウントにログインしてください</div>
+    <div class="login-error" id="loginError"></div>
+    <label class="login-label" for="loginEmail">メールアドレス</label>
+    <input type="email" id="loginEmail" class="login-input" placeholder="example@email.com" autocomplete="email">
+    <label class="login-label" for="loginPassword">パスワード</label>
+    <input type="password" id="loginPassword" class="login-input" placeholder="パスワードを入力" autocomplete="current-password">
+    <button class="login-btn" id="loginBtn" onclick="login()">ログイン</button>
+  </div>
+</div>
 
 <!-- 削除確認モーダル -->
 <div id="confirmModal" class="modal-overlay" style="display:none">
@@ -875,14 +1015,87 @@
 
 <script>
   // ---- Supabase設定 ----
-  const SUPABASE_URL      = 'https://ezsbblezrzllskbbkqoa.supabase.co';
+  
+  const SUPABASE_URL ='https://ezsbblezrzllskbbkqoa.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6c2JibGV6cnpsbHNrYmJrcW9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2NDQ4NDUsImV4cCI6MjA5OTIyMDg0NX0.IMOqtIIsJRcvD2FUuKalqBTxouNRuRH7a_ssijAnJTw';
   const supabaseClient    = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  let allProjects  = [];
-  let searchText   = '';
+  let currentUser   = null;
+  let allProjects   = [];
+  let searchText    = '';
   let selectedMonth = '';
   let chartInstance = null;
+
+  // ---- Auth: 初期化 ----
+  async function initAuth() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      showApp();
+      fetchProjects();
+    } else {
+      showLogin();
+    }
+  }
+
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (session) {
+      currentUser = session.user;
+      showApp();
+      if (event === 'SIGNED_IN') fetchProjects();
+    } else {
+      currentUser = null;
+      allProjects = [];
+      showLogin();
+    }
+  });
+
+  function showApp() {
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('appContent').style.display   = 'block';
+    document.getElementById('headerUser').style.display   = 'flex';
+    document.getElementById('headerUserEmail').textContent = currentUser?.email || '';
+  }
+
+  function showLogin() {
+    document.getElementById('loginOverlay').style.display = 'flex';
+    document.getElementById('appContent').style.display   = 'none';
+    document.getElementById('headerUser').style.display   = 'none';
+    render();
+  }
+
+  async function login() {
+    const email    = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errEl    = document.getElementById('loginError');
+    errEl.textContent = '';
+    errEl.classList.remove('show');
+
+    if (!email || !password) {
+      errEl.textContent = 'メールアドレスとパスワードを入力してください';
+      errEl.classList.add('show');
+      return;
+    }
+
+    const btn = document.getElementById('loginBtn');
+    btn.disabled    = true;
+    btn.textContent = 'ログイン中...';
+
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+    btn.disabled    = false;
+    btn.textContent = 'ログイン';
+
+    if (error) {
+      errEl.textContent = 'メールアドレスまたはパスワードが正しくありません';
+      errEl.classList.add('show');
+    }
+  }
+
+  async function logout() {
+    await supabaseClient.auth.signOut();
+    showToast('ログアウトしました');
+  }
 
   // ステータス定義
   const STATUS_STYLE = {
@@ -1396,6 +1609,7 @@
         contract_amount: contractAmount ? Number(contractAmount) : null,
         status:          status,
         memo:            workContent,
+        user_id:         currentUser.id,
       };
 
       if (editId) {
@@ -2053,11 +2267,19 @@
     }
   });
 
+  // ---- ログイン画面: Enterキーで送信 ----
+  document.getElementById('loginPassword').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); login(); }
+  });
+  document.getElementById('loginEmail').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('loginPassword').focus(); }
+  });
+
   // ---- 初期化 ----
   addContractorRow();
   document.getElementById('contractDate').value = new Date().toISOString().split('T')[0];
   updateReqCounter();
-  fetchProjects();
+  initAuth();
 
 </script>
 </body>
